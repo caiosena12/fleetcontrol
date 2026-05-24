@@ -1,16 +1,14 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { supabaseAnonKey, supabaseUrl } from "@/lib/supabase/config"
 
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Missing Supabase configuration:", {
       hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseKey,
+      hasKey: !!supabaseAnonKey,
     })
     throw new Error("Supabase configuration is missing")
   }
 
-  return createBrowserClient(supabaseUrl, supabaseKey)
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }

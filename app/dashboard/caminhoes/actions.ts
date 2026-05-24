@@ -63,8 +63,8 @@ export async function createTruck(formData: TruckFormData) {
     return { error: "Erro ao criar caminhao" }
   }
 
-  revalidatePath("/dashboard/caminhoes", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/caminhoes")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -84,8 +84,8 @@ export async function updateTruck(id: string, formData: TruckFormData) {
     return { error: "Erro ao atualizar caminhao" }
   }
 
-  revalidatePath("/dashboard/caminhoes", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/caminhoes")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -102,7 +102,7 @@ export async function deleteTruck(id: string) {
     return { error: "Erro ao excluir caminhao" }
   }
 
-  revalidatePath("/dashboard/caminhoes", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/caminhoes")
+  revalidatePath("/dashboard")
   return { success: true }
 }

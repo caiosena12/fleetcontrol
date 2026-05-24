@@ -60,7 +60,7 @@ export default async function CaminhoesPage() {
                       <TableCell className="font-medium">{truck.plate}</TableCell>
                       <TableCell>{truck.model}</TableCell>
                       <TableCell>{truck.year}</TableCell>
-                      <TableCell>{truck.avg_consumption} km/l</TableCell>
+                      <TableCell>-</TableCell>
                       <TableCell>
                         <Badge
                           variant={

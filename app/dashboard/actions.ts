@@ -3,6 +3,11 @@
 import { createClient } from "@/lib/supabase/server"
 import type { DashboardStats, MonthlyData, CostBreakdown, Trip } from "@/lib/types"
 
+type MonthlyTrip = Pick<
+  Trip,
+  "start_date" | "freights" | "tolls" | "operational_costs" | "empty_fuel_cost"
+>
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const supabase = await createClient()
   
@@ -105,7 +110,7 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
     monthlyMap.set(key, { revenue: 0, costs: 0 })
   }
 
-  ;(trips || []).forEach((trip: Trip) => {
+  ;((trips || []) as MonthlyTrip[]).forEach((trip) => {
     const date = new Date(trip.start_date)
     const key = date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
     

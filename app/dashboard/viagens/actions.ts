@@ -87,6 +87,16 @@ export async function createTrip(formData: TripFormData) {
     return { error: "Usuario nao autenticado" }
   }
 
+  // Validar dados obrigatórios
+  if (!formData.truck_id || !formData.origin || !formData.destination || formData.km_start === undefined) {
+    return { error: "Preencha todos os campos obrigatórios" }
+  }
+
+  // Validar se km_end >= km_start
+  if (formData.km_end !== null && formData.km_end !== undefined && formData.km_end < formData.km_start) {
+    return { error: "Km final deve ser maior ou igual ao km inicial" }
+  }
+
   const { error } = await supabase.from("trips").insert({
     ...formData,
     user_id: user.id,
@@ -94,17 +104,31 @@ export async function createTrip(formData: TripFormData) {
 
   if (error) {
     console.error("Error creating trip:", error)
-    return { error: "Erro ao criar viagem" }
+    // Retornar mensagem de erro mais específica
+    if (error.message?.includes("km_end_greater_than_start")) {
+      return { error: "Km final deve ser maior ou igual ao km inicial" }
+    }
+    return { error: error.message || "Erro ao criar viagem" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
 export async function updateTrip(id: string, formData: TripFormData) {
   const supabase = await createClient()
   
+  // Validar dados obrigatórios
+  if (!formData.truck_id || !formData.origin || !formData.destination || formData.km_start === undefined) {
+    return { error: "Preencha todos os campos obrigatórios" }
+  }
+
+  // Validar se km_end >= km_start
+  if (formData.km_end !== null && formData.km_end !== undefined && formData.km_end < formData.km_start) {
+    return { error: "Km final deve ser maior ou igual ao km inicial" }
+  }
+
   const { error } = await supabase
     .from("trips")
     .update({
@@ -115,11 +139,14 @@ export async function updateTrip(id: string, formData: TripFormData) {
 
   if (error) {
     console.error("Error updating trip:", error)
-    return { error: "Erro ao atualizar viagem" }
+    if (error.message?.includes("km_end_greater_than_start")) {
+      return { error: "Km final deve ser maior ou igual ao km inicial" }
+    }
+    return { error: error.message || "Erro ao atualizar viagem" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -136,8 +163,8 @@ export async function deleteTrip(id: string) {
     return { error: "Erro ao excluir viagem" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -169,8 +196,8 @@ export async function addFreight(formData: FreightFormData) {
     return { error: "Erro ao adicionar frete" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -187,8 +214,8 @@ export async function deleteFreight(id: string) {
     return { error: "Erro ao excluir frete" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -219,8 +246,8 @@ export async function addToll(formData: TollFormData) {
     return { error: "Erro ao adicionar pedagio" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -237,8 +264,8 @@ export async function deleteToll(id: string) {
     return { error: "Erro ao excluir pedagio" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -270,8 +297,8 @@ export async function addOperationalCost(formData: OperationalCostFormData) {
     return { error: "Erro ao adicionar custo" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }
 
@@ -288,7 +315,7 @@ export async function deleteOperationalCost(id: string) {
     return { error: "Erro ao excluir custo" }
   }
 
-  revalidatePath("/dashboard/viagens", "max")
-  revalidatePath("/dashboard", "max")
+  revalidatePath("/dashboard/viagens")
+  revalidatePath("/dashboard")
   return { success: true }
 }

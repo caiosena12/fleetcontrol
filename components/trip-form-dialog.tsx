@@ -43,12 +43,12 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
     end_date: "" as string | null,
     origin: "",
     destination: "",
-    km_start: 0,
-    km_end: null as number | null,
+    km_start: "" as number | string,
+    km_end: "" as number | string | null,
     // Rodado vazio
-    empty_km: null as number | null,
-    empty_fuel_liters: null as number | null,
-    empty_fuel_cost: null as number | null,
+    empty_km: "" as number | string | null,
+    empty_fuel_liters: "" as number | string | null,
+    empty_fuel_cost: "" as number | string | null,
     status: "in_progress" as "in_progress" | "completed" | "cancelled",
   })
 
@@ -63,14 +63,14 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
       setFormData({
         truck_id: trip.truck_id,
         start_date: trip.start_date,
-        end_date: trip.end_date || null,
+        end_date: trip.end_date || "",
         origin: trip.origin,
         destination: trip.destination,
-        km_start: trip.km_start,
-        km_end: trip.km_end,
-        empty_km: trip.empty_km,
-        empty_fuel_liters: trip.empty_fuel_liters,
-        empty_fuel_cost: trip.empty_fuel_cost,
+        km_start: trip.km_start ?? "",
+        km_end: trip.km_end ?? "",
+        empty_km: trip.empty_km ?? "",
+        empty_fuel_liters: trip.empty_fuel_liters ?? "",
+        empty_fuel_cost: trip.empty_fuel_cost ?? "",
         status: trip.status,
       })
     }
@@ -81,13 +81,28 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
     setError(null)
     setLoading(true)
 
+    // Validar km_start obrigatório
+    if (!formData.km_start || formData.km_start === "") {
+      setError("Km inicial é obrigatório")
+      setLoading(false)
+      return
+    }
+
+    // Validar truck_id obrigatório
+    if (!formData.truck_id) {
+      setError("Selecione um caminhão")
+      setLoading(false)
+      return
+    }
+
     const dataToSubmit = {
       ...formData,
       end_date: formData.end_date || null,
-      km_end: formData.km_end || null,
-      empty_km: formData.empty_km || null,
-      empty_fuel_liters: formData.empty_fuel_liters || null,
-      empty_fuel_cost: formData.empty_fuel_cost || null,
+      km_start: typeof formData.km_start === "string" ? parseFloat(formData.km_start) : formData.km_start,
+      km_end: formData.km_end !== "" && formData.km_end !== null ? (typeof formData.km_end === "string" ? parseFloat(formData.km_end) : formData.km_end) : null,
+      empty_km: formData.empty_km !== "" && formData.empty_km !== null ? (typeof formData.empty_km === "string" ? parseFloat(formData.empty_km) : formData.empty_km) : null,
+      empty_fuel_liters: formData.empty_fuel_liters !== "" && formData.empty_fuel_liters !== null ? (typeof formData.empty_fuel_liters === "string" ? parseFloat(formData.empty_fuel_liters) : formData.empty_fuel_liters) : null,
+      empty_fuel_cost: formData.empty_fuel_cost !== "" && formData.empty_fuel_cost !== null ? (typeof formData.empty_fuel_cost === "string" ? parseFloat(formData.empty_fuel_cost) : formData.empty_fuel_cost) : null,
     }
 
     const result = trip
@@ -210,9 +225,14 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   type="number"
                   step="0.1"
                   value={formData.km_start}
-                  onChange={(e) =>
-                    setFormData({ ...formData, km_start: parseFloat(e.target.value) })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = value ? parseFloat(value) : ""
+                    setFormData({ 
+                      ...formData, 
+                      km_start: Number.isNaN(numValue) ? "" : numValue
+                    })
+                  }}
                   required
                 />
               </Field>
@@ -222,13 +242,15 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   id="km_end"
                   type="number"
                   step="0.1"
-                  value={formData.km_end || ""}
-                  onChange={(e) =>
+                  value={formData.km_end ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    const numValue = value ? parseFloat(value) : ""
                     setFormData({
                       ...formData,
-                      km_end: e.target.value ? parseFloat(e.target.value) : null,
+                      km_end: Number.isNaN(numValue) ? "" : numValue,
                     })
-                  }
+                  }}
                 />
               </Field>
             </div>
@@ -245,13 +267,15 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     type="number"
                     step="0.1"
                     placeholder="0"
-                    value={formData.empty_km || ""}
-                    onChange={(e) =>
+                    value={formData.empty_km ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const numValue = value ? parseFloat(value) : ""
                       setFormData({
                         ...formData,
-                        empty_km: e.target.value ? parseFloat(e.target.value) : null,
+                        empty_km: Number.isNaN(numValue) ? "" : numValue,
                       })
-                    }
+                    }}
                   />
                 </Field>
                 <Field>
@@ -261,13 +285,15 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     type="number"
                     step="0.1"
                     placeholder="0"
-                    value={formData.empty_fuel_liters || ""}
-                    onChange={(e) =>
+                    value={formData.empty_fuel_liters ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const numValue = value ? parseFloat(value) : ""
                       setFormData({
                         ...formData,
-                        empty_fuel_liters: e.target.value ? parseFloat(e.target.value) : null,
+                        empty_fuel_liters: Number.isNaN(numValue) ? "" : numValue,
                       })
-                    }
+                    }}
                   />
                 </Field>
                 <Field>
@@ -277,13 +303,15 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     type="number"
                     step="0.01"
                     placeholder="R$ 0,00"
-                    value={formData.empty_fuel_cost || ""}
-                    onChange={(e) =>
+                    value={formData.empty_fuel_cost ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const numValue = value ? parseFloat(value) : ""
                       setFormData({
                         ...formData,
-                        empty_fuel_cost: e.target.value ? parseFloat(e.target.value) : null,
+                        empty_fuel_cost: Number.isNaN(numValue) ? "" : numValue,
                       })
-                    }
+                    }}
                   />
                 </Field>
               </div>
