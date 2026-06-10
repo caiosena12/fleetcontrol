@@ -38,7 +38,7 @@ export function AddFreightDialog({ tripId }: AddFreightDialogProps) {
   const router = useRouter()
 
   const [formData, setFormData] = useState({
-    amount: 0,
+    amount: "" as string | number,
     cargo_type: "",
     client: "",
     status: "pending" as "pending" | "received",
@@ -48,16 +48,23 @@ export function AddFreightDialog({ tripId }: AddFreightDialogProps) {
     e.preventDefault()
     setLoading(true)
 
+    const amount = formData.amount ? parseFloat(String(formData.amount)) : 0
+    if (isNaN(amount)) {
+      setLoading(false)
+      return
+    }
+
     await addFreight({
       trip_id: tripId,
-      ...formData,
+      amount,
       cargo_type: formData.cargo_type || null,
       client: formData.client || null,
+      status: formData.status,
     })
 
     setLoading(false)
     setOpen(false)
-    setFormData({ amount: 0, cargo_type: "", client: "", status: "pending" })
+    setFormData({ amount: "", cargo_type: "", client: "", status: "pending" })
     router.refresh()
   }
 
@@ -85,9 +92,10 @@ export function AddFreightDialog({ tripId }: AddFreightDialogProps) {
                 type="number"
                 step="0.01"
                 min="0"
+                placeholder="0,00"
                 value={formData.amount}
                 onChange={(e) =>
-                  setFormData({ ...formData, amount: parseFloat(e.target.value) })
+                  setFormData({ ...formData, amount: e.target.value })
                 }
                 required
               />
@@ -157,7 +165,7 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
   const router = useRouter()
 
   const [formData, setFormData] = useState({
-    amount: 0,
+    amount: "" as string | number,
     location: "",
     toll_date: new Date().toISOString().split("T")[0],
   })
@@ -166,16 +174,23 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
     e.preventDefault()
     setLoading(true)
 
+    const amount = formData.amount ? parseFloat(String(formData.amount)) : 0
+    if (isNaN(amount)) {
+      setLoading(false)
+      return
+    }
+
     await addToll({
       trip_id: tripId,
-      ...formData,
+      amount,
+      location: formData.location,
       toll_date: formData.toll_date || null,
     })
 
     setLoading(false)
     setOpen(false)
     setFormData({
-      amount: 0,
+      amount: "",
       location: "",
       toll_date: new Date().toISOString().split("T")[0],
     })
@@ -206,9 +221,10 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
                 type="number"
                 step="0.01"
                 min="0"
+                placeholder="0,00"
                 value={formData.amount}
                 onChange={(e) =>
-                  setFormData({ ...formData, amount: parseFloat(e.target.value) })
+                  setFormData({ ...formData, amount: e.target.value })
                 }
                 required
               />
@@ -263,26 +279,36 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
 
   const [formData, setFormData] = useState({
     cost_type: "fuel" as "fuel" | "food" | "maintenance" | "other",
-    amount: 0,
+    amount: "" as string | number,
     description: "",
-    liters: null as number | null,
+    liters: "" as string | number | null,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
+    const amount = formData.amount ? parseFloat(String(formData.amount)) : 0
+    const liters = formData.liters ? parseFloat(String(formData.liters)) : null
+    
+    if (isNaN(amount) || (liters !== null && isNaN(liters))) {
+      setLoading(false)
+      return
+    }
+
     await addOperationalCost({
       trip_id: tripId,
-      ...formData,
+      cost_type: formData.cost_type,
+      amount,
       description: formData.description || null,
+      liters,
     })
 
     setLoading(false)
     setOpen(false)
     setFormData({
       cost_type: "fuel",
-      amount: 0,
+      amount: "",
       description: "",
       liters: null,
     })
@@ -332,9 +358,10 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
                 type="number"
                 step="0.01"
                 min="0"
+                placeholder="0,00"
                 value={formData.amount}
                 onChange={(e) =>
-                  setFormData({ ...formData, amount: parseFloat(e.target.value) })
+                  setFormData({ ...formData, amount: e.target.value })
                 }
                 required
               />
@@ -347,11 +374,12 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
                   type="number"
                   step="0.01"
                   min="0"
+                  placeholder="0,00"
                   value={formData.liters || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      liters: e.target.value ? parseFloat(e.target.value) : null,
+                      liters: e.target.value || null,
                     })
                   }
                 />

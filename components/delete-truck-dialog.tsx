@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { Trash2 } from "lucide-react"
-import { deleteTruck } from "@/app/dashboard/caminhoes/actions"
+import { deleteTruck, type TruckActionResult } from "@/app/dashboard/caminhoes/actions"
 
 interface DeleteTruckDialogProps {
   truckId: string
@@ -26,14 +26,29 @@ interface DeleteTruckDialogProps {
 export function DeleteTruckDialog({ truckId, truckPlate }: DeleteTruckDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleDelete = async () => {
+    setError(null)
     setLoading(true)
-    await deleteTruck(truckId)
-    setLoading(false)
-    setOpen(false)
-    router.refresh()
+    try {
+      const result: TruckActionResult = await deleteTruck(truckId)
+      
+      if ("error" in result) {
+        setError(result.error)
+        setLoading(false)
+        return
+      }
+
+      setLoading(false)
+      setOpen(false)
+      router.refresh()
+    } catch (err) {
+      console.error("Error deleting truck:", err)
+      setError("Erro inesperado ao excluir caminhao")
+      setLoading(false)
+    }
   }
 
   return (
@@ -51,8 +66,13 @@ export function DeleteTruckDialog({ truckId, truckPlate }: DeleteTruckDialogProp
             pode ser desfeita e todas as viagens associadas serao excluidas.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error && (
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
+            {error}
+          </div>
+        )}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

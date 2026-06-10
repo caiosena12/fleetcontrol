@@ -22,7 +22,7 @@ import {
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Plus, Pencil } from "lucide-react"
-import { createTruck, updateTruck } from "@/app/dashboard/caminhoes/actions"
+import { createTruck, updateTruck, type TruckFormData, type TruckActionResult } from "@/app/dashboard/caminhoes/actions"
 import type { Truck } from "@/lib/types"
 
 interface TruckFormDialogProps {
@@ -59,19 +59,50 @@ export function TruckFormDialog({ truck, trigger }: TruckFormDialogProps) {
     setError(null)
     setLoading(true)
 
-    const result = truck
-      ? await updateTruck(truck.id, formData)
-      : await createTruck(formData)
+    try {
+      // Validação local antes de enviar
+      if (!formData.plate?.trim()) {
+        setError("Placa é obrigatória")
+        setLoading(false)
+        return
+      }
 
-    if (result.error) {
-      setError(result.error)
+      if (!formData.model?.trim()) {
+        setError("Modelo é obrigatório")
+        setLoading(false)
+        return
+      }
+
+      if (!formData.year || formData.year < 1900 || formData.year > new Date().getFullYear() + 1) {
+        setError("Ano inválido")
+        setLoading(false)
+        return
+      }
+
+      const result: TruckActionResult = truck
+        ? await updateTruck(truck.id, formData)
+        : await createTruck(formData)
+
+      if ("error" in result) {
+        setError(result.error)
+        setLoading(false)
+        return
+      }
+
       setLoading(false)
-      return
+      setOpen(false)
+      setFormData({
+        plate: "",
+        model: "",
+        year: new Date().getFullYear(),
+        status: "active",
+      })
+      router.refresh()
+    } catch (err) {
+      console.error("Error submitting truck form:", err)
+      setError("Erro inesperado. Tente novamente.")
+      setLoading(false)
     }
-
-    setLoading(false)
-    setOpen(false)
-    router.refresh()
   }
 
   const currentYear = new Date().getFullYear()
@@ -101,7 +132,9 @@ export function TruckFormDialog({ truck, trigger }: TruckFormDialogProps) {
         <form onSubmit={handleSubmit}>
           <FieldGroup>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive border border-destructive/20">
+                {error}
+              </div>
             )}
             <Field>
               <FieldLabel htmlFor="plate">Placa</FieldLabel>
