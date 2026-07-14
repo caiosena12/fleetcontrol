@@ -23,6 +23,7 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { Plus, Pencil } from "lucide-react"
 import { createTrip, updateTrip, getActiveTrucks } from "@/app/dashboard/viagens/actions"
+import { getTodayDateOnly } from "@/lib/date-utils"
 import type { Trip, Truck } from "@/lib/types"
 
 interface TripFormDialogProps {
@@ -39,7 +40,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
 
   const [formData, setFormData] = useState({
     truck_id: "",
-    start_date: new Date().toISOString().split("T")[0],
+    start_date: getTodayDateOnly(),
     end_date: "" as string | null,
     origin: "",
     destination: "",
@@ -95,11 +96,16 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
       return
     }
 
+    const kmStart = typeof formData.km_start === "string" ? parseFloat(formData.km_start) : formData.km_start
+    const kmEnd = formData.km_end !== "" && formData.km_end !== null ? (typeof formData.km_end === "string" ? parseFloat(formData.km_end) : formData.km_end) : null
+    const computedKmTotal = kmStart && kmEnd && kmEnd >= kmStart ? kmEnd - kmStart : null
+
     const dataToSubmit = {
       ...formData,
       end_date: formData.end_date || null,
-      km_start: typeof formData.km_start === "string" ? parseFloat(formData.km_start) : formData.km_start,
-      km_end: formData.km_end !== "" && formData.km_end !== null ? (typeof formData.km_end === "string" ? parseFloat(formData.km_end) : formData.km_end) : null,
+      km_start: kmStart,
+      km_end: kmEnd,
+      km_total: computedKmTotal,
       empty_km: formData.empty_km !== "" && formData.empty_km !== null ? (typeof formData.empty_km === "string" ? parseFloat(formData.empty_km) : formData.empty_km) : null,
       empty_fuel_liters: formData.empty_fuel_liters !== "" && formData.empty_fuel_liters !== null ? (typeof formData.empty_fuel_liters === "string" ? parseFloat(formData.empty_fuel_liters) : formData.empty_fuel_liters) : null,
       empty_fuel_cost: formData.empty_fuel_cost !== "" && formData.empty_fuel_cost !== null ? (typeof formData.empty_fuel_cost === "string" ? parseFloat(formData.empty_fuel_cost) : formData.empty_fuel_cost) : null,
@@ -202,6 +208,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
                   }
+                  title="Data de início da viagem. O valor é salvo sem conversão de fuso horário."
                   required
                 />
               </Field>
@@ -214,6 +221,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   onChange={(e) =>
                     setFormData({ ...formData, end_date: e.target.value || null })
                   }
+                  title="Data de término da viagem, quando houver."
                 />
               </Field>
             </div>
@@ -251,6 +259,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                       km_end: Number.isNaN(numValue) ? "" : numValue,
                     })
                   }}
+                  title="Informe o odômetro final para calcular o deslocamento carregado."
                 />
               </Field>
             </div>
@@ -276,10 +285,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                         empty_km: Number.isNaN(numValue) ? "" : numValue,
                       })
                     }}
+                    title="Deslocamento sem carga, usado para calcular o rodado vazio e a participação no total de km."
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="empty_fuel_liters">Litros</FieldLabel>
+                  <FieldLabel htmlFor="empty_fuel_liters">Litros de combustível vazio</FieldLabel>
                   <Input
                     id="empty_fuel_liters"
                     type="number"
@@ -294,10 +304,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                         empty_fuel_liters: Number.isNaN(numValue) ? "" : numValue,
                       })
                     }}
+                    title="Litros consumidos no deslocamento vazio. Isso alimenta o cálculo de consumo vazio."
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="empty_fuel_cost">Custo Combustivel</FieldLabel>
+                  <FieldLabel htmlFor="empty_fuel_cost">Custo de combustível vazio</FieldLabel>
                   <Input
                     id="empty_fuel_cost"
                     type="number"
@@ -312,11 +323,13 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                         empty_fuel_cost: Number.isNaN(numValue) ? "" : numValue,
                       })
                     }}
+                    title="Valor gasto no deslocamento vazio. Esse custo entra nos cálculos de lucro e margem."
                   />
                 </Field>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 Deslocamento sem carga entre fretes. Gera custo mas não gera receita.
+                {formData.empty_km && formData.empty_fuel_liters ? ` Consumo vazio: ${(Number(formData.empty_km) / Number(formData.empty_fuel_liters)).toFixed(2)} km/L` : ""}
               </p>
             </div>
             <Field>

@@ -2,6 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server"
 import type { DashboardStats, MonthlyData, CostBreakdown, Trip } from "@/lib/types"
+import { formatMonthYear, toDateOnly } from "@/lib/date-utils"
+import {
+  calculateAggregateMetrics,
+  calculateTripMetrics,
+} from "@/lib/trip-calculations"
 
 type MonthlyTrip = Pick<
   Trip,
@@ -28,57 +33,25 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const tripsData = trips || []
   const trucksData = trucks || []
-
-  // Calculate totals
-  let totalRevenue = 0
-  let totalCosts = 0
-  let totalKm = 0
-  let activeTrips = 0
-
-  tripsData.forEach((trip: Trip) => {
-    // Revenue from freights
-    if (trip.freights) {
-      totalRevenue += trip.freights.reduce((sum, f) => sum + Number(f.amount), 0)
-    }
-    
-    // Costs from tolls and operational costs
-    if (trip.tolls) {
-      totalCosts += trip.tolls.reduce((sum, t) => sum + Number(t.amount), 0)
-    }
-    if (trip.operational_costs) {
-      totalCosts += trip.operational_costs.reduce((sum, c) => sum + Number(c.amount), 0)
-    }
-
-    // Custo do rodado vazio (deslocamento sem carga)
-    if (trip.empty_fuel_cost) {
-      totalCosts += Number(trip.empty_fuel_cost)
-    }
-
-    // Kilometers (incluindo rodado vazio)
-    if (trip.km_total) {
-      totalKm += Number(trip.km_total)
-    }
-    if (trip.empty_km) {
-      totalKm += Number(trip.empty_km)
-    }
-
-    // Active trips
-    if (trip.status === "in_progress") {
-      activeTrips++
-    }
-  })
-
-  const profit = totalRevenue - totalCosts
-  const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
+  const metrics = tripsData.map((trip: Trip) => calculateTripMetrics(trip))
+  const totals = calculateAggregateMetrics(metrics)
 
   return {
-    totalRevenue,
-    totalCosts,
-    profit,
-    margin,
+    totalRevenue: totals.revenue,
+    totalCosts: totals.totalCosts,
+    profit: totals.profit,
+    margin: totals.margin,
     totalTrips: tripsData.length,
-    activeTrips,
-    totalKm,
+    activeTrips: tripsData.filter((trip: Trip) => trip.status === "in_progress").length,
+    totalKm: totals.totalKm,
+    loadedKm: totals.loadedKm,
+    emptyKm: totals.emptyKm,
+    totalFuelLiters: totals.totalFuelLiters,
+    avgFuelPrice: totals.averageFuelPrice,
+    avgConsumption: totals.averageConsumption,
+    avgEmptyConsumption: totals.emptyConsumption,
+    emptyKmPercentage: totals.emptyKmPercentage,
+    costPerKm: totals.costPerKm,
     totalTrucks: trucksData.length,
     activeTrucks: trucksData.filter(t => t.status === "active").length,
   }
@@ -94,11 +67,12 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
     .from("trips")
     .select(`
       start_date,
+      empty_fuel_cost,
       freights (*),
       tolls (*),
       operational_costs (*)
     `)
-    .gte("start_date", sixMonthsAgo.toISOString().split("T")[0])
+    .gte("start_date", toDateOnly(sixMonthsAgo))
 
   const monthlyMap = new Map<string, { revenue: number; costs: number }>()
 
@@ -106,29 +80,18 @@ export async function getMonthlyData(): Promise<MonthlyData[]> {
   for (let i = 5; i >= 0; i--) {
     const date = new Date()
     date.setMonth(date.getMonth() - i)
-    const key = date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+    const key = formatMonthYear(date)
     monthlyMap.set(key, { revenue: 0, costs: 0 })
   }
 
   ;((trips || []) as MonthlyTrip[]).forEach((trip) => {
-    const date = new Date(trip.start_date)
-    const key = date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
+    const key = formatMonthYear(trip.start_date)
     
     const current = monthlyMap.get(key) || { revenue: 0, costs: 0 }
-    
-    if (trip.freights) {
-      current.revenue += trip.freights.reduce((sum, f) => sum + Number(f.amount), 0)
-    }
-    if (trip.tolls) {
-      current.costs += trip.tolls.reduce((sum, t) => sum + Number(t.amount), 0)
-    }
-    if (trip.operational_costs) {
-      current.costs += trip.operational_costs.reduce((sum, c) => sum + Number(c.amount), 0)
-    }
-    // Custo do rodado vazio
-    if (trip.empty_fuel_cost) {
-      current.costs += Number(trip.empty_fuel_cost)
-    }
+    const tripMetrics = calculateTripMetrics(trip)
+
+    current.revenue += tripMetrics.revenue
+    current.costs += tripMetrics.totalCosts
 
     monthlyMap.set(key, current)
   })
@@ -152,6 +115,10 @@ export async function getCostBreakdown(): Promise<CostBreakdown[]> {
     .from("tolls")
     .select("amount")
 
+  const { data: trips } = await supabase
+    .from("trips")
+    .select("empty_fuel_cost")
+
   const costsByType = new Map<string, number>()
   
   // Add operational costs
@@ -166,6 +133,14 @@ export async function getCostBreakdown(): Promise<CostBreakdown[]> {
     costsByType.set("tolls", totalTolls)
   }
 
+  const totalEmptyFuel = (trips || []).reduce(
+    (sum, trip) => sum + Number(trip.empty_fuel_cost || 0),
+    0
+  )
+  if (totalEmptyFuel > 0) {
+    costsByType.set("empty_fuel", totalEmptyFuel)
+  }
+
   const total = Array.from(costsByType.values()).reduce((sum, v) => sum + v, 0)
 
   const typeLabels: Record<string, string> = {
@@ -173,6 +148,7 @@ export async function getCostBreakdown(): Promise<CostBreakdown[]> {
     food: "Alimentacao",
     maintenance: "Manutencao",
     tolls: "Pedagios",
+    empty_fuel: "Rodado Vazio",
     other: "Outros",
   }
 

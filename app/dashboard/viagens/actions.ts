@@ -71,6 +71,7 @@ interface TripFormData {
   destination: string
   km_start: number
   km_end?: number | null
+  km_total?: number | null
   // Rodado vazio
   empty_km?: number | null
   empty_fuel_liters?: number | null
@@ -97,8 +98,11 @@ export async function createTrip(formData: TripFormData) {
     return { error: "Km final deve ser maior ou igual ao km inicial" }
   }
 
+  const kmTotal = formData.km_end && formData.km_end >= formData.km_start ? formData.km_end - formData.km_start : null
+
   const { error } = await supabase.from("trips").insert({
     ...formData,
+    km_total: kmTotal,
     user_id: user.id,
   })
 
@@ -129,10 +133,13 @@ export async function updateTrip(id: string, formData: TripFormData) {
     return { error: "Km final deve ser maior ou igual ao km inicial" }
   }
 
+  const kmTotal = formData.km_end && formData.km_end >= formData.km_start ? formData.km_end - formData.km_start : null
+
   const { error } = await supabase
     .from("trips")
     .update({
       ...formData,
+      km_total: kmTotal,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -285,6 +292,20 @@ export async function addOperationalCost(formData: OperationalCostFormData) {
   
   if (!user) {
     return { error: "Usuario nao autenticado" }
+  }
+
+  if (formData.cost_type === "fuel") {
+    const { data: trip } = await supabase
+      .from("trips")
+      .select("empty_fuel_cost")
+      .eq("id", formData.trip_id)
+      .single()
+
+    if (trip?.empty_fuel_cost && formData.amount === Number(trip.empty_fuel_cost)) {
+      return {
+        error: "Este abastecimento pode estar duplicando o gasto de rodado vazio. Ajuste o valor ou registre apenas o combustível carregado.",
+      }
+    }
   }
 
   const { error } = await supabase.from("operational_costs").insert({

@@ -10,6 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { calculateAggregateMetrics, calculateTripMetrics } from "@/lib/trip-calculations"
+import { formatDateOnly } from "@/lib/date-utils"
+import { formatCurrency, formatFuelEfficiency, formatNumber } from "@/lib/formatters"
 import type { Trip, Truck } from "@/lib/types"
 
 async function getReportData() {
@@ -38,41 +41,25 @@ async function getReportData() {
 export default async function RelatoriosPage() {
   const { trips, trucks } = await getReportData()
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
-  }
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR")
-  }
-
-  // Calculate trip profitability
   const tripProfitability = trips.map((trip: Trip) => {
-    const revenue = (trip.freights || []).reduce(
-      (sum, f) => sum + Number(f.amount),
-      0
-    )
-    const tollCosts = (trip.tolls || []).reduce(
-      (sum, t) => sum + Number(t.amount),
-      0
-    )
-    const operationalCosts = (trip.operational_costs || []).reduce(
-      (sum, c) => sum + Number(c.amount),
-      0
-    )
-    const totalCosts = tollCosts + operationalCosts
-    const profit = revenue - totalCosts
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+    const metrics = calculateTripMetrics(trip)
 
     return {
       ...trip,
-      revenue,
-      totalCosts,
-      profit,
-      margin,
+      revenue: metrics.revenue,
+      totalCosts: metrics.totalCosts,
+      profit: metrics.profit,
+      margin: metrics.margin,
+      emptyFuelCost: metrics.emptyFuelCost,
+      emptyKm: metrics.emptyKm,
+      loadedKm: metrics.loadedKm,
+      totalKm: metrics.totalKm,
+      fuelLiters: metrics.totalFuelLiters,
+      averageFuelPrice: metrics.averageFuelPrice,
+      averageConsumption: metrics.averageConsumption,
+      emptyConsumption: metrics.emptyConsumption,
+      emptyKmPercentage: metrics.emptyKmPercentage,
+      costPerKm: metrics.costPerKm,
     }
   })
 
@@ -85,10 +72,7 @@ export default async function RelatoriosPage() {
     const totalRevenue = truckTrips.reduce((sum, t) => sum + t.revenue, 0)
     const totalCosts = truckTrips.reduce((sum, t) => sum + t.totalCosts, 0)
     const totalProfit = truckTrips.reduce((sum, t) => sum + t.profit, 0)
-    const totalKm = truckTrips.reduce(
-      (sum, t) => sum + (Number(t.km_total) || 0),
-      0
-    )
+    const totalKm = truckTrips.reduce((sum, t) => sum + t.totalKm, 0)
     const avgMargin =
       totalTrips > 0
         ? truckTrips.reduce((sum, t) => sum + t.margin, 0) / totalTrips
@@ -107,17 +91,11 @@ export default async function RelatoriosPage() {
   })
 
   // Totals
-  const totals = tripProfitability.reduce(
-    (acc, trip) => ({
-      revenue: acc.revenue + trip.revenue,
-      costs: acc.costs + trip.totalCosts,
-      profit: acc.profit + trip.profit,
-      km: acc.km + (Number(trip.km_total) || 0),
-    }),
-    { revenue: 0, costs: 0, profit: 0, km: 0 }
+  const totals = calculateAggregateMetrics(
+    tripProfitability.map((trip) => calculateTripMetrics(trip))
   )
 
-  const avgMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0
+  const avgMargin = totals.margin
 
   return (
     <>
@@ -140,7 +118,7 @@ export default async function RelatoriosPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Custos Totais</p>
               <p className="text-2xl font-bold text-destructive">
-                {formatCurrency(totals.costs)}
+                {formatCurrency(totals.totalCosts)}
               </p>
             </CardContent>
           </Card>
@@ -160,6 +138,24 @@ export default async function RelatoriosPage() {
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Margem Media</p>
               <p className="text-2xl font-bold">{avgMargin.toFixed(1)}%</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Rodado Vazio</p>
+              <p className="text-2xl font-bold">{formatCurrency(totals.emptyFuelCost)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Km Vazio</p>
+              <p className="text-2xl font-bold">{formatNumber(totals.emptyKm)} km</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Consumo Medio</p>
+              <p className="text-2xl font-bold">{formatFuelEfficiency(totals.averageConsumption)}</p>
             </CardContent>
           </Card>
         </div>
@@ -278,7 +274,7 @@ export default async function RelatoriosPage() {
                         {" → "}
                         <span>{trip.destination}</span>
                       </TableCell>
-                      <TableCell>{formatDate(trip.start_date)}</TableCell>
+                      <TableCell>{formatDateOnly(trip.start_date)}</TableCell>
                       <TableCell className="text-accent">
                         {formatCurrency(trip.revenue)}
                       </TableCell>

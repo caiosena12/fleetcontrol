@@ -9,6 +9,13 @@ import {
   getCostBreakdown,
   getRecentTrips,
 } from "./actions"
+import {
+  formatCurrency,
+  formatCurrencyPerUnit,
+  formatFuelEfficiency,
+  formatNumber,
+  formatPercent,
+} from "@/lib/formatters"
 
 export default async function DashboardPage() {
   const [stats, monthlyData, costBreakdown, recentTrips] = await Promise.all([
@@ -18,17 +25,6 @@ export default async function DashboardPage() {
     getRecentTrips(),
   ])
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
-  }
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("pt-BR").format(value)
-  }
-
   return (
     <>
       <DashboardHeader
@@ -36,7 +32,7 @@ export default async function DashboardPage() {
         description="Visao geral do desempenho da sua frota"
       />
       <main className="flex-1 overflow-auto p-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <KPICard
             title="Receita Total"
             value={formatCurrency(stats.totalRevenue)}
@@ -75,7 +71,32 @@ export default async function DashboardPage() {
             title="Km Rodados"
             value={formatNumber(stats.totalKm)}
             iconName="gauge"
-            description={`${stats.activeTrips} viagens em andamento`}
+            description={`${formatNumber(stats.loadedKm)} carregado / ${formatNumber(stats.emptyKm)} vazio`}
+          />
+          <KPICard
+            title="Litros"
+            value={formatNumber(stats.totalFuelLiters, 2)}
+            iconName="gauge"
+            description="Combustivel total registrado"
+          />
+          <KPICard
+            title="Consumo Medio"
+            value={formatFuelEfficiency(stats.avgConsumption)}
+            iconName="gauge"
+            description="Km total / litros totais"
+          />
+          <KPICard
+            title="Preco Medio/L"
+            value={formatCurrencyPerUnit(stats.avgFuelPrice, "L")}
+            iconName="dollar-sign"
+            description="Custo combustivel / litros"
+          />
+          <KPICard
+            title="Custo/Km"
+            value={formatCurrencyPerUnit(stats.costPerKm, "km")}
+            iconName="trending-up"
+            variant="warning"
+            description={`${formatPercent(stats.emptyKmPercentage)} do km em vazio`}
           />
         </div>
 

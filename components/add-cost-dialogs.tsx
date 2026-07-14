@@ -27,6 +27,8 @@ import {
   addToll,
   addOperationalCost,
 } from "@/app/dashboard/viagens/actions"
+import { getTodayDateOnly } from "@/lib/date-utils"
+import { formatCurrency, formatCurrencyPerUnit } from "@/lib/formatters"
 
 interface AddFreightDialogProps {
   tripId: string
@@ -167,7 +169,7 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
   const [formData, setFormData] = useState({
     amount: "" as string | number,
     location: "",
-    toll_date: new Date().toISOString().split("T")[0],
+    toll_date: getTodayDateOnly(),
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -192,7 +194,7 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
     setFormData({
       amount: "",
       location: "",
-      toll_date: new Date().toISOString().split("T")[0],
+      toll_date: getTodayDateOnly(),
     })
     router.refresh()
   }
@@ -270,11 +272,16 @@ export function AddTollDialog({ tripId }: AddTollDialogProps) {
 
 interface AddOperationalCostDialogProps {
   tripId: string
+  emptyFuelCost?: number
 }
 
-export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogProps) {
+export function AddOperationalCostDialog({
+  tripId,
+  emptyFuelCost = 0,
+}: AddOperationalCostDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -286,12 +293,22 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     setLoading(true)
 
     const amount = formData.amount ? parseFloat(String(formData.amount)) : 0
-    const liters = formData.liters ? parseFloat(String(formData.liters)) : null
+    const liters = formData.cost_type === "fuel" && formData.liters
+      ? parseFloat(String(formData.liters))
+      : null
     
-    if (isNaN(amount) || (liters !== null && isNaN(liters))) {
+    if (isNaN(amount) || amount <= 0) {
+      setError("Informe um valor total pago maior que zero.")
+      setLoading(false)
+      return
+    }
+
+    if (formData.cost_type === "fuel" && (!liters || isNaN(liters) || liters <= 0)) {
+      setError("Informe os litros abastecidos para calcular o preco medio por litro.")
       setLoading(false)
       return
     }
@@ -315,6 +332,14 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
     router.refresh()
   }
 
+  const amountValue = formData.amount ? Number(formData.amount) : 0
+  const litersValue = formData.liters ? Number(formData.liters) : 0
+  const averageFuelPrice =
+    formData.cost_type === "fuel" && amountValue > 0 && litersValue > 0
+      ? amountValue / litersValue
+      : 0
+  const showFuelDuplicateWarning = formData.cost_type === "fuel" && emptyFuelCost > 0
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -332,12 +357,19 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <FieldGroup>
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
             <Field>
               <FieldLabel htmlFor="cost_type">Tipo</FieldLabel>
               <Select
                 value={formData.cost_type}
                 onValueChange={(value: "fuel" | "food" | "maintenance" | "other") =>
-                  setFormData({ ...formData, cost_type: value })
+                  setFormData({
+                    ...formData,
+                    cost_type: value,
+                    liters: value === "fuel" ? formData.liters : null,
+                  })
                 }
               >
                 <SelectTrigger>
@@ -352,7 +384,7 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
               </Select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="cost_amount">Valor (R$)</FieldLabel>
+              <FieldLabel htmlFor="cost_amount">Valor Total Pago (R$)</FieldLabel>
               <Input
                 id="cost_amount"
                 type="number"
@@ -360,6 +392,7 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
                 min="0"
                 placeholder="0,00"
                 value={formData.amount}
+                title="Valor total pago no abastecimento ou no custo operacional."
                 onChange={(e) =>
                   setFormData({ ...formData, amount: e.target.value })
                 }
@@ -368,7 +401,7 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
             </Field>
             {formData.cost_type === "fuel" && (
               <Field>
-                <FieldLabel htmlFor="liters">Litros</FieldLabel>
+                <FieldLabel htmlFor="liters">Litros abastecidos</FieldLabel>
                 <Input
                   id="liters"
                   type="number"
@@ -376,13 +409,24 @@ export function AddOperationalCostDialog({ tripId }: AddOperationalCostDialogPro
                   min="0"
                   placeholder="0,00"
                   value={formData.liters || ""}
+                  title="Quantidade total de litros abastecidos. O preco por litro e calculado automaticamente."
                   onChange={(e) =>
                     setFormData({
                       ...formData,
                       liters: e.target.value || null,
                     })
                   }
+                  required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Preco medio do litro: {formatCurrencyPerUnit(averageFuelPrice, "L")}
+                </p>
+                {showFuelDuplicateWarning && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Esta viagem ja possui {formatCurrency(emptyFuelCost)} em combustivel de rodado vazio.
+                    Confira se este abastecimento nao esta duplicando o mesmo gasto.
+                  </p>
+                )}
               </Field>
             )}
             <Field>

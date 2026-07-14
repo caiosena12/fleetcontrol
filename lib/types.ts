@@ -77,6 +77,14 @@ export interface DashboardStats {
   totalTrips: number
   activeTrips: number
   totalKm: number
+  loadedKm: number
+  emptyKm: number
+  totalFuelLiters: number
+  avgFuelPrice: number
+  avgConsumption: number
+  avgEmptyConsumption: number
+  emptyKmPercentage: number
+  costPerKm: number
   totalTrucks: number
   activeTrucks: number
 }

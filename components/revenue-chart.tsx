@@ -3,20 +3,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import type { MonthlyData } from "@/lib/types"
+import { formatCompactCurrency } from "@/lib/formatters"
 
 interface RevenueChartProps {
   data: MonthlyData[]
 }
 
 export function RevenueChart({ data }: RevenueChartProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      notation: "compact",
-    }).format(value)
-  }
-
   return (
     <Card className="col-span-full lg:col-span-2">
       <CardHeader>
@@ -39,7 +32,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={formatCurrency}
+                tickFormatter={formatCompactCurrency}
               />
               <Tooltip
                 contentStyle={{
@@ -47,7 +40,7 @@ export function RevenueChart({ data }: RevenueChartProps) {
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "var(--radius)",
                 }}
-                formatter={(value: number) => formatCurrency(value)}
+                formatter={(value: number) => formatCompactCurrency(value)}
               />
               <Legend />
               <Bar 

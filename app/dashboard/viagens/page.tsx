@@ -16,6 +16,9 @@ import {
 import { EmptyState } from "@/components/empty-state"
 import { Eye } from "lucide-react"
 import Link from "next/link"
+import { formatDateOnly } from "@/lib/date-utils"
+import { formatNumber } from "@/lib/formatters"
+import { calculateTripMetrics } from "@/lib/trip-calculations"
 
 const statusLabels = {
   in_progress: "Em Andamento",
@@ -31,15 +34,6 @@ const statusVariants = {
 
 export default async function ViagensPage() {
   const trips = await getTrips()
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR")
-  }
-
-  const formatNumber = (value: number | null) => {
-    if (value === null) return "-"
-    return new Intl.NumberFormat("pt-BR").format(value)
-  }
 
   return (
     <>
@@ -79,7 +73,10 @@ export default async function ViagensPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {trips.map((trip) => (
+                  {trips.map((trip) => {
+                    const metrics = calculateTripMetrics(trip)
+
+                    return (
                     <TableRow key={trip.id}>
                       <TableCell className="font-medium">
                         {trip.truck?.plate || "-"}
@@ -89,8 +86,13 @@ export default async function ViagensPage() {
                         {" → "}
                         <span>{trip.destination}</span>
                       </TableCell>
-                      <TableCell>{formatDate(trip.start_date)}</TableCell>
-                      <TableCell>{formatNumber(trip.km_total)} km</TableCell>
+                      <TableCell>{formatDateOnly(trip.start_date)}</TableCell>
+                      <TableCell>
+                        <div>{formatNumber(metrics.totalKm)} km</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatNumber(metrics.loadedKm)} carregado / {formatNumber(metrics.emptyKm)} vazio
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={statusVariants[trip.status]}>
                           {statusLabels[trip.status]}
@@ -111,7 +113,8 @@ export default async function ViagensPage() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               </Table>
             )}

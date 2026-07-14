@@ -21,6 +21,15 @@ import {
 } from "@/components/ui/table"
 import { ArrowLeft, Truck, MapPin, Calendar, Gauge } from "lucide-react"
 import type { Freight, Toll, OperationalCost } from "@/lib/types"
+import { formatDateOnly } from "@/lib/date-utils"
+import {
+  formatCurrency,
+  formatCurrencyPerUnit,
+  formatFuelEfficiency,
+  formatNumber,
+  formatPercent,
+} from "@/lib/formatters"
+import { calculateTripMetrics } from "@/lib/trip-calculations"
 
 const statusLabels = {
   in_progress: "Em Andamento",
@@ -47,39 +56,13 @@ export default async function TripDetailPage({
     notFound()
   }
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
-  }
-
-  const formatDate = (date: string | null) => {
-    if (!date) return "-"
-    return new Date(date).toLocaleDateString("pt-BR")
-  }
-
-  const formatNumber = (value: number | null) => {
-    if (value === null) return "-"
-    return new Intl.NumberFormat("pt-BR").format(value)
-  }
-
-  // Calculate totals
-  const totalFreight = (trip.freights || []).reduce(
-    (sum, f) => sum + Number(f.amount),
-    0
-  )
-  const totalTolls = (trip.tolls || []).reduce(
-    (sum, t) => sum + Number(t.amount),
-    0
-  )
-  const totalOperationalCosts = (trip.operational_costs || []).reduce(
-    (sum, c) => sum + Number(c.amount),
-    0
-  )
-  const totalCosts = totalTolls + totalOperationalCosts
-  const profit = totalFreight - totalCosts
-  const margin = totalFreight > 0 ? (profit / totalFreight) * 100 : 0
+  const metrics = calculateTripMetrics(trip)
+  const totalFreight = metrics.revenue
+  const totalTolls = metrics.tollCosts
+  const totalOperationalCosts = metrics.operationalCosts
+  const totalCosts = metrics.totalCosts
+  const profit = metrics.profit
+  const margin = metrics.margin
 
   return (
     <>
@@ -136,7 +119,7 @@ export default async function TripDetailPage({
                 <div>
                   <p className="text-sm text-muted-foreground">Periodo</p>
                   <p className="font-semibold">
-                    {formatDate(trip.start_date)} - {formatDate(trip.end_date)}
+                    {formatDateOnly(trip.start_date)} - {formatDateOnly(trip.end_date)}
                   </p>
                 </div>
               </div>
@@ -150,7 +133,10 @@ export default async function TripDetailPage({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Km Total</p>
-                  <p className="font-semibold">{formatNumber(trip.km_total)} km</p>
+                  <p className="font-semibold">{formatNumber(metrics.totalKm)} km</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatNumber(metrics.loadedKm)} carregado / {formatNumber(metrics.emptyKm)} vazio
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -177,7 +163,7 @@ export default async function TripDetailPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <div className="rounded-lg bg-accent/10 p-4">
                 <p className="text-sm text-muted-foreground">Receita (Fretes)</p>
                 <p className="text-2xl font-bold text-accent">
@@ -188,6 +174,12 @@ export default async function TripDetailPage({
                 <p className="text-sm text-muted-foreground">Custos Totais</p>
                 <p className="text-2xl font-bold text-destructive">
                   {formatCurrency(totalCosts)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">Rodado Vazio</p>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(metrics.emptyFuelCost)}
                 </p>
               </div>
               <div
@@ -207,6 +199,39 @@ export default async function TripDetailPage({
               <div className="rounded-lg bg-muted p-4">
                 <p className="text-sm text-muted-foreground">Margem</p>
                 <p className="text-2xl font-bold">{margin.toFixed(1)}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Indicadores de Eficiencia</CardTitle>
+            <CardDescription>
+              Consumo, combustivel e participacao do deslocamento vazio
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-5">
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">Litros Totais</p>
+                <p className="text-xl font-semibold">{formatNumber(metrics.totalFuelLiters, 2)} L</p>
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">Preco Medio/L</p>
+                <p className="text-xl font-semibold">{formatCurrencyPerUnit(metrics.averageFuelPrice, "L")}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">Consumo Medio</p>
+                <p className="text-xl font-semibold">{formatFuelEfficiency(metrics.averageConsumption)}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">Consumo Vazio</p>
+                <p className="text-xl font-semibold">{formatFuelEfficiency(metrics.emptyConsumption)}</p>
+              </div>
+              <div className="rounded-lg bg-muted p-4">
+                <p className="text-sm text-muted-foreground">KM Vazio</p>
+                <p className="text-xl font-semibold">{formatPercent(metrics.emptyKmPercentage)}</p>
               </div>
             </div>
           </CardContent>
@@ -303,7 +328,7 @@ export default async function TripDetailPage({
                     {(trip.tolls as Toll[]).map((toll) => (
                       <TableRow key={toll.id}>
                         <TableCell>{toll.location}</TableCell>
-                        <TableCell>{formatDate(toll.toll_date)}</TableCell>
+                        <TableCell>{formatDateOnly(toll.toll_date)}</TableCell>
                         <TableCell>{formatCurrency(Number(toll.amount))}</TableCell>
                         <TableCell>
                           <DeleteItemButton itemId={toll.id} itemType="toll" />
@@ -325,7 +350,10 @@ export default async function TripDetailPage({
                   Total: {formatCurrency(totalOperationalCosts)}
                 </CardDescription>
               </div>
-              <AddOperationalCostDialog tripId={trip.id} />
+              <AddOperationalCostDialog
+                tripId={trip.id}
+                emptyFuelCost={metrics.emptyFuelCost}
+              />
             </CardHeader>
             <CardContent>
               {(trip.operational_costs || []).length === 0 ? (

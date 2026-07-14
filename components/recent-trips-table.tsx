@@ -13,6 +13,8 @@ import {
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
+import { formatDateOnly } from "@/lib/date-utils"
+import { formatCurrency } from "@/lib/formatters"
 
 interface TripWithDetails {
   id: string
@@ -41,17 +43,6 @@ const statusVariants = {
 } as const
 
 export function RecentTripsTable({ trips }: RecentTripsTableProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
-  }
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR")
-  }
-
   return (
     <Card className="col-span-full">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -99,7 +90,7 @@ export function RecentTripsTable({ trips }: RecentTripsTableProps) {
                       {" → "}
                       <span>{trip.destination}</span>
                     </TableCell>
-                    <TableCell>{formatDate(trip.start_date)}</TableCell>
+                    <TableCell>{formatDateOnly(trip.start_date)}</TableCell>
                     <TableCell>{formatCurrency(totalFreight)}</TableCell>
                     <TableCell>
                       <Badge variant={statusVariants[trip.status]}>

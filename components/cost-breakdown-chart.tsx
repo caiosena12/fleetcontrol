@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import type { CostBreakdown } from "@/lib/types"
+import { formatCurrency } from "@/lib/formatters"
 
 interface CostBreakdownChartProps {
   data: CostBreakdown[]
@@ -17,13 +18,6 @@ const COLORS = [
 ]
 
 export function CostBreakdownChart({ data }: CostBreakdownChartProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value)
-  }
-
   if (data.length === 0) {
     return (
       <Card>
