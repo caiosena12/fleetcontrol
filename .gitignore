@@ -17,3 +17,6 @@ node_modules/
 .env
 dist
 .env.local
+
+# Local copy folder (backup/duplicate)
+fleetcontrol/
