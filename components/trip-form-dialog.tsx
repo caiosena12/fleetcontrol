@@ -136,19 +136,19 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-2xl w-full p-6">
+        <DialogHeader className="pb-4 mb-4 border-b border-border">
+          <DialogTitle className="text-lg font-semibold">
             {trip ? "Editar Viagem" : "Nova Viagem"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground">
             {trip
               ? "Atualize as informacoes da viagem"
               : "Preencha os dados para registrar uma nova viagem"}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <FieldGroup>
+          <FieldGroup className="gap-6">
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
@@ -160,7 +160,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   setFormData({ ...formData, truck_id: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10" size="default">
                   <SelectValue placeholder="Selecione um caminhao" />
                 </SelectTrigger>
                 <SelectContent>
@@ -172,7 +172,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="origin">Origem</FieldLabel>
                 <Input
@@ -183,6 +183,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     setFormData({ ...formData, origin: e.target.value })
                   }
                   required
+                  className="h-10"
                 />
               </Field>
               <Field>
@@ -195,10 +196,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     setFormData({ ...formData, destination: e.target.value })
                   }
                   required
+                  className="h-10"
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="start_date">Data Inicio</FieldLabel>
                 <Input
@@ -210,6 +212,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   }
                   title="Data de início da viagem. O valor é salvo sem conversão de fuso horário."
                   required
+                  className="h-10"
                 />
               </Field>
               <Field>
@@ -222,10 +225,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     setFormData({ ...formData, end_date: e.target.value || null })
                   }
                   title="Data de término da viagem, quando houver."
+                  className="h-10"
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field>
                 <FieldLabel htmlFor="km_start">Km Inicial</FieldLabel>
                 <Input
@@ -242,6 +246,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     })
                   }}
                   required
+                  className="h-10"
                 />
               </Field>
               <Field>
@@ -260,15 +265,19 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                     })
                   }}
                   title="Informe o odômetro final para calcular o deslocamento carregado."
+                  className="h-10"
                 />
               </Field>
             </div>
             {/* Seção Rodado Vazio */}
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-              <h3 className="mb-3 text-sm font-semibold text-amber-800 dark:text-amber-200">
-                🚛 Rodado Vazio (deslocamento sem carga)
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-lg border bg-muted p-4 dark:bg-muted/20 dark:border-muted/60">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <span className="text-base">🚛</span>
+                  <span>Rodado Vazio</span>
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="empty_km">KM Vazio</FieldLabel>
                   <Input
@@ -286,10 +295,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                       })
                     }}
                     title="Deslocamento sem carga, usado para calcular o rodado vazio e a participação no total de km."
+                    className="h-10"
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="empty_fuel_liters">Litros de combustível vazio</FieldLabel>
+                  <FieldLabel htmlFor="empty_fuel_liters">Litros consumidos</FieldLabel>
                   <Input
                     id="empty_fuel_liters"
                     type="number"
@@ -305,10 +315,11 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                       })
                     }}
                     title="Litros consumidos no deslocamento vazio. Isso alimenta o cálculo de consumo vazio."
+                    className="h-10"
                   />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="empty_fuel_cost">Custo de combustível vazio</FieldLabel>
+                <Field className="md:col-span-2">
+                  <FieldLabel htmlFor="empty_fuel_cost">Custo do combustível</FieldLabel>
                   <Input
                     id="empty_fuel_cost"
                     type="number"
@@ -324,13 +335,18 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                       })
                     }}
                     title="Valor gasto no deslocamento vazio. Esse custo entra nos cálculos de lucro e margem."
+                    className="h-10"
                   />
                 </Field>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Deslocamento sem carga entre fretes. Gera custo mas não gera receita.
-                {formData.empty_km && formData.empty_fuel_liters ? ` Consumo vazio: ${(Number(formData.empty_km) / Number(formData.empty_fuel_liters)).toFixed(2)} km/L` : ""}
               </p>
+              {formData.empty_km && formData.empty_fuel_liters ? (
+                <div className="mt-2 text-sm text-foreground font-medium">
+                  Consumo vazio: {(Number(formData.empty_km) / Number(formData.empty_fuel_liters)).toFixed(2)} km/L
+                </div>
+              ) : null}
             </div>
             <Field>
               <FieldLabel htmlFor="status">Status</FieldLabel>
@@ -340,7 +356,7 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                   setFormData({ ...formData, status: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10" size="default">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -350,15 +366,16 @@ export function TripFormDialog({ trip, trigger }: TripFormDialogProps) {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-3 pt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setOpen(false)}
+                className="w-28"
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading || !formData.truck_id}>
+              <Button type="submit" disabled={loading || !formData.truck_id} className="w-28">
                 {loading ? <Spinner className="mr-2" /> : null}
                 {trip ? "Salvar" : "Cadastrar"}
               </Button>
